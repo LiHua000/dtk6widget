@@ -37,6 +37,7 @@
 #include <QButtonGroup>
 #include <QtPrintSupport/QPrinterInfo>
 #include <QPrinter>
+#include <QMessageBox>
 #include <QDebug>
 #include <QTime>
 #include <QFontDatabase>
@@ -2463,6 +2464,24 @@ void DPrintPreviewDialogPrivate::_q_startPrint(bool clicked)
     }
 
     pview->print();
+
+    // Check print result before closing the dialog.
+    // When the target directory has no write permission, QPainter::begin()
+    // fails silently and the output file is never created.
+    if (printer->error() != QPrinter::NoError ||
+        ((isSavePdf || isSavePicture) && !QFileInfo::exists(printer->outputFileName()))) {
+        QString title = qApp->translate("DPrintPreviewDialogPrivate", "Print");
+        QString msg;
+        if (!isSavePdf && !isSavePicture) {
+            msg = qApp->translate("DPrintPreviewDialogPrivate",
+                "Printing failed. Please check the printer status.");
+        } else {
+            msg = qApp->translate("DPrintPreviewDialogPrivate",
+                "Save failed. Please check the target directory permissions or available disk space.");
+        }
+        QMessageBox::warning(q, title, msg);
+        return;
+    }
 
     q->accept();
 }
